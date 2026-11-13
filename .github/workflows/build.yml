@@ -40,27 +40,34 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BMX_TAG_INPUT: ${{ github.event.inputs.bmx_tag }}
         run: |
-          mkdir -p logs
+          mkdir -p logs bmx-dl "$HOME/bmx"
           TAG="$BMX_TAG_INPUT"
           if [ -z "$TAG" ]; then
-            gh release list -R bmx-ng/bmx-ng --limit 400 --json tagName -q '.[].tagName' > logs/bmx-tags.txt
-            TAG=$(grep -E '\.linux\.arm64$' logs/bmx-tags.txt | head -n1 || true)
+            gh release list -R bmx-ng/bmx-ng --limit 400 --json tagName -q '.[].tagName' > logs/bmx-tags.txt || true
+            echo "Releases listed: $(wc -l < logs/bmx-tags.txt)"
+            # the Raspberry Pi / 64-bit ARM Linux builds are tagged "...rpi.arm64"
+            TAG=$(grep -E '\.rpi\.arm64$' logs/bmx-tags.txt | head -n1 || true)
             if [ -z "$TAG" ]; then
-              TAG=$(grep -E '\.raspberrypi\.arm64$' logs/bmx-tags.txt | head -n1 || true)
+              TAG=$(grep -E '\.(linux|raspberrypi)\.arm64$' logs/bmx-tags.txt | head -n1 || true)
             fi
           fi
+          if [ -z "$TAG" ]; then
+            echo "Could not auto-detect a release; falling back to a known one"
+            TAG="v0.165.3.61.202610040902.rpi.arm64"
+          fi
           echo "Using BlitzMax NG release: $TAG" | tee logs/bmx-release.txt
-          [ -n "$TAG" ] || { echo "No arm64 BlitzMax NG release found"; exit 1; }
 
-          mkdir -p bmx-dl "$HOME/bmx"
-          gh release download "$TAG" -R bmx-ng/bmx-ng --dir bmx-dl
-          ls -la bmx-dl | tee -a logs/bmx-release.txt
-          for f in bmx-dl/*; do
-            case "$f" in
-              *.tar.xz|*.tar.gz|*.tgz|*.tar.bz2) tar -xf "$f" -C "$HOME/bmx" ;;
-              *.zip) unzip -q -o "$f" -d "$HOME/bmx" ;;
-            esac
-          done
+          gh release view "$TAG" -R bmx-ng/bmx-ng --json assets -q '.assets[].name' | tee logs/bmx-assets.txt
+          ASSET=$(grep -E '\.(tar\.xz|tar\.gz|tgz|zip)$' logs/bmx-assets.txt | head -n1 || true)
+          [ -n "$ASSET" ] || { echo "No archive found among the release assets"; exit 1; }
+          echo "Downloading $ASSET"
+          gh release download "$TAG" -R bmx-ng/bmx-ng --pattern "$ASSET" --dir bmx-dl
+          ls -la bmx-dl
+
+          case "$ASSET" in
+            *.zip) unzip -q -o "bmx-dl/$ASSET" -d "$HOME/bmx" ;;
+            *) tar -xf "bmx-dl/$ASSET" -C "$HOME/bmx" ;;
+          esac
 
           BMK=$(find "$HOME/bmx" -type f -name bmk -path '*/bin/*' | head -n1 || true)
           if [ -z "$BMK" ]; then
