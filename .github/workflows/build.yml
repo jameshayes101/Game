@@ -1,6 +1,6 @@
 name: Build Grid Wars 2 for Miyoo Flip
 
-# Put this file in your repo at:  .github/workflows/build.yml
+# This file lives in your repo at:  .github/workflows/build.yml  (all other kit files sit in the repo root)
 # Then: Actions tab -> "Build Grid Wars 2 for Miyoo Flip" -> Run workflow.
 # The repo must be PUBLIC for the free ARM build machines.
 
@@ -108,13 +108,13 @@ jobs:
           cp gl4es/lib/libGL.so.1 "$P/gl4es.aarch64/"
           cp -a src/gfx/. "$P/gfx/"
           cp -a src/sounds/. "$P/sounds/"
-          cp music/*.wav "$P/music/"
+          cp Theme0.wav Theme1.wav Theme2.wav "$P/music/"
           cp src/hiscores.dat "$P/"
-          cp portmaster/gridwars2/Config.txt portmaster/gridwars2/gridwars2.gptk "$P/"
+          cp Config.txt gridwars2.gptk "$P/"
           cp src/Readme.txt "$P/licenses/GridWars-Readme.txt"
-          cp portmaster/licenses/NOTICE.txt "$P/licenses/"
-          cp portmaster/port.json package/
-          cp "portmaster/Grid Wars 2.sh" package/
+          cp NOTICE.txt "$P/licenses/"
+          cp port.json package/
+          cp Grid-Wars-2.sh "package/Grid Wars 2.sh"
           chmod +x "package/Grid Wars 2.sh" "$P/gridwars2.aarch64"
           (cd package && zip -qr ../gridwars2-miyoo-flip.zip .)
           ls -la gridwars2-miyoo-flip.zip
