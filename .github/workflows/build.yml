@@ -28,9 +28,19 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential cmake git curl xz-utils unzip zip file binutils \
-            libasound2-dev libpulse-dev libxft-dev libxxf86vm-dev libx11-dev libxext-dev \
-            libgl-dev libglu1-mesa-dev libegl-dev libgles-dev libgbm-dev libdrm-dev libsdl2-dev
+          # core tools: these must succeed
+          sudo apt-get install -y build-essential cmake git curl xz-utils unzip zip file binutils pkg-config
+          # BlitzMax compiles its own copy of SDL, which wants headers for many optional back-ends
+          # (audio, video, input). Install each package separately so that one unknown package name
+          # can't break the whole step.
+          for p in libasound2-dev libpulse-dev libaudio-dev libjack-dev libsndio-dev libpipewire-0.3-dev \
+                   libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev libxinerama-dev libxss-dev \
+                   libxfixes-dev libxxf86vm-dev libxft-dev libxt-dev libxv-dev \
+                   libwayland-dev wayland-protocols libxkbcommon-dev libdecor-0-dev \
+                   libdrm-dev libgbm-dev libegl-dev libgles-dev libgl-dev libglu1-mesa-dev \
+                   libdbus-1-dev libudev-dev libibus-1.0-dev libsamplerate0-dev libsystemd-dev libusb-1.0-0-dev; do
+            sudo apt-get install -y "$p" || echo "!! could not install $p (continuing)"
+          done
 
       - name: Apply Miyoo Flip patch to the source
         run: python3 apply_patch.py src
@@ -85,12 +95,7 @@ jobs:
           export PATH="$BMX_BIN:$PATH"
           mkdir -p ../logs
           set +e
-          echo "=== Attempt 1: explicit linux/arm64 target ==="
-          bmk makeapp -t gui -r -w -l linux -g arm64 gridwars.bmx 2>&1 | tee ../logs/build-attempt1.log
-          if [ ! -x gridwars ]; then
-            echo "=== Attempt 2: native defaults ==="
-            bmk makeapp -t gui -r -w gridwars.bmx 2>&1 | tee ../logs/build-attempt2.log
-          fi
+          bmk makeapp -t gui -r -l linux -g arm64 gridwars.bmx 2>&1 | tee ../logs/build.log
           set -e
           test -x gridwars
           file gridwars | tee ../logs/binary-info.txt
