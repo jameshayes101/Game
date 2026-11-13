@@ -76,4 +76,16 @@ def snd(s):
 ?""")
     return s
 edit("sound.bmx", snd)
+# 3) The game defines its own global Function named Rect (utils.bmx). With the SDL graphics module
+#    that name is already taken, so the compiler reports "Duplicate identifier rect". Rename it.
+import re
+for name in ("utils.bmx", "control.bmx"):
+    p2 = os.path.join(src, name)
+    with open(p2, encoding="latin-1", newline="") as f:
+        t = f.read()
+    t, n = re.subn(r"\brect\b", "GwRect", t, flags=re.IGNORECASE)
+    print("renamed %d uses of Rect in %s" % (n, name))
+    with open(p2, "w", encoding="latin-1", newline="") as f:
+        f.write(t)
+
 print("Patched OK")
