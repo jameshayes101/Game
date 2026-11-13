@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "name": "gridwars2.zip",
+  "items": ["Grid Wars 2.sh", "gridwars2/"],
+  "items_opt": null,
+  "attr": {
+    "title": "Grid Wars 2",
+    "porter": "unofficial personal build",
+    "desc": "Twin-stick arcade shooter inspired by Geometry Wars. Miyoo Flip build: D-pad moves, face buttons fire.",
+    "inst": "Copy Grid Wars 2.sh and the gridwars2 folder into your ports folder.",
+    "genres": ["arcade", "shooter"],
+    "image": {},
+    "rtr": true,
+    "exp": false,
+    "runtime": null,
+    "reqs": []
+  }
+}

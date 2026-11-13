@@ -1,7 +1,7 @@
 [Windowed]
 False
 [Control Type]
-Dual Analog
+Keyboard
 [Hybrid Config]
 0
 [Joypad Config]
@@ -59,21 +59,21 @@ Dual Analog
 [Full Grid]
 1
 [Gfx Set]
-3
+2
 [Show Stars]
 100
 [Scroll]
 0
 [Playfield Width]
-1024
+640
 [Playfield Height]
-768
+480
 [Screen Width]
-1024
+640
 [Screen Height]
-768
+480
 [Particle Count]
-2200
+1200
 [Particle Life]
 64
 [Particle Gravity]

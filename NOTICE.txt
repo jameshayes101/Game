@@ -1,0 +1,8 @@
+Grid Wars 2 - Miyoo Flip port
+------------------------------
+Game: Grid Wars 2 by Mark Incitti (2006). Music by "Swith" (see GridWars-Readme.txt).
+Source used: https://github.com/mmatyas/GridWars  (fork aimed at embedded devices; listed as GPL in
+distribution packaging - check the upstream repository for the authoritative license text before
+redistributing this package).
+gl4es by Sebastien Chevalier (ptitSeb): https://github.com/ptitSeb/gl4es  (MIT license).
+Music in music/*.wav is rendered from the original .it tracker songs shipped with the game.

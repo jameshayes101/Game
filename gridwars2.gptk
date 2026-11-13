@@ -1,0 +1,21 @@
+# Grid Wars 2 on Miyoo Flip (no analog sticks)
+# D-pad            = move (W A S D)
+# Face buttons     = fire direction (arrow keys) - positional: top=up, bottom=down, left=left, right=right
+#                    press two together for diagonal fire
+# L1 / R1          = bomb (space)
+# L2 / R2          = enter (menus)
+# Start            = esc (options menu)
+# Select + Start   = quit (handled by gptokeyb)
+up = w
+down = s
+left = a
+right = d
+y = up
+a = down
+x = left
+b = right
+l1 = space
+r1 = space
+l2 = enter
+r2 = enter
+start = esc

@@ -1,0 +1,134 @@
+name: Build Grid Wars 2 for Miyoo Flip
+
+# This file lives in your repo at:  .github/workflows/build.yml  (all other kit files sit in the repo root)
+# Then: Actions tab -> "Build Grid Wars 2 for Miyoo Flip" -> Run workflow.
+# The repo must be PUBLIC for the free ARM build machines.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bmx_tag:
+        description: "BlitzMax NG release tag to use (leave empty = auto-pick the newest arm64 build)"
+        required: false
+        default: ""
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04-arm
+    steps:
+      - name: Checkout port kit (this repo)
+        uses: actions/checkout@v4
+
+      - name: Checkout upstream GridWars source
+        uses: actions/checkout@v4
+        with:
+          repository: mmatyas/GridWars
+          path: src
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake git curl xz-utils unzip zip file binutils \
+            libasound2-dev libpulse-dev libxft-dev libxxf86vm-dev libx11-dev libxext-dev \
+            libgl-dev libglu1-mesa-dev libegl-dev libgles-dev libgbm-dev libdrm-dev libsdl2-dev
+
+      - name: Apply Miyoo Flip patch to the source
+        run: python3 apply_patch.py src
+
+      - name: Download BlitzMax NG (arm64 toolchain)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BMX_TAG_INPUT: ${{ github.event.inputs.bmx_tag }}
+        run: |
+          mkdir -p logs
+          TAG="$BMX_TAG_INPUT"
+          if [ -z "$TAG" ]; then
+            gh release list -R bmx-ng/bmx-ng --limit 400 --json tagName -q '.[].tagName' > logs/bmx-tags.txt
+            TAG=$(grep -E '\.linux\.arm64$' logs/bmx-tags.txt | head -n1 || true)
+            if [ -z "$TAG" ]; then
+              TAG=$(grep -E '\.raspberrypi\.arm64$' logs/bmx-tags.txt | head -n1 || true)
+            fi
+          fi
+          echo "Using BlitzMax NG release: $TAG" | tee logs/bmx-release.txt
+          [ -n "$TAG" ] || { echo "No arm64 BlitzMax NG release found"; exit 1; }
+
+          mkdir -p bmx-dl "$HOME/bmx"
+          gh release download "$TAG" -R bmx-ng/bmx-ng --dir bmx-dl
+          ls -la bmx-dl | tee -a logs/bmx-release.txt
+          for f in bmx-dl/*; do
+            case "$f" in
+              *.tar.xz|*.tar.gz|*.tgz|*.tar.bz2) tar -xf "$f" -C "$HOME/bmx" ;;
+              *.zip) unzip -q -o "$f" -d "$HOME/bmx" ;;
+            esac
+          done
+
+          BMK=$(find "$HOME/bmx" -type f -name bmk -path '*/bin/*' | head -n1 || true)
+          if [ -z "$BMK" ]; then
+            echo "bmk not found after extracting. Layout:"; find "$HOME/bmx" -maxdepth 3 | head -50
+            exit 1
+          fi
+          BMX_BIN=$(dirname "$BMK")
+          chmod +x "$BMX_BIN"/* 2>/dev/null || true
+          echo "BMX_BIN=$BMX_BIN" >> "$GITHUB_ENV"
+          echo "bmk is at $BMK"
+
+      - name: Build the game (aarch64)
+        working-directory: src
+        run: |
+          export PATH="$BMX_BIN:$PATH"
+          mkdir -p ../logs
+          set +e
+          echo "=== Attempt 1: explicit linux/arm64 target ==="
+          bmk makeapp -t gui -r -w -l linux -g arm64 gridwars.bmx 2>&1 | tee ../logs/build-attempt1.log
+          if [ ! -x gridwars ]; then
+            echo "=== Attempt 2: native defaults ==="
+            bmk makeapp -t gui -r -w gridwars.bmx 2>&1 | tee ../logs/build-attempt2.log
+          fi
+          set -e
+          test -x gridwars
+          file gridwars | tee ../logs/binary-info.txt
+          ldd gridwars 2>&1 | tee -a ../logs/binary-info.txt
+          echo "Highest glibc symbol version needed:" | tee -a ../logs/binary-info.txt
+          objdump -T gridwars | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n1 | tee -a ../logs/binary-info.txt
+
+      - name: Build gl4es (OpenGL -> GLES translation layer)
+        run: |
+          git clone --depth 1 https://github.com/ptitSeb/gl4es.git
+          cd gl4es && mkdir build && cd build
+          cmake .. -DNOX11=ON -DGLX_STUBS=ON -DEGL_WRAPPER=ON -DGBM=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          make -j"$(nproc)"
+          ls -la ../lib
+
+      - name: Assemble the PortMaster package
+        run: |
+          set -e
+          P=package/gridwars2
+          mkdir -p "$P/gl4es.aarch64" "$P/music" "$P/sounds" "$P/gfx" "$P/licenses"
+          cp src/gridwars "$P/gridwars2.aarch64"
+          cp gl4es/lib/libGL.so.1 "$P/gl4es.aarch64/"
+          cp -a src/gfx/. "$P/gfx/"
+          cp -a src/sounds/. "$P/sounds/"
+          cp Theme0.wav Theme1.wav Theme2.wav "$P/music/"
+          cp src/hiscores.dat "$P/"
+          cp Config.txt gridwars2.gptk "$P/"
+          cp src/Readme.txt "$P/licenses/GridWars-Readme.txt"
+          cp NOTICE.txt "$P/licenses/"
+          cp port.json package/
+          cp Grid-Wars-2.sh "package/Grid Wars 2.sh"
+          chmod +x "package/Grid Wars 2.sh" "$P/gridwars2.aarch64"
+          (cd package && zip -qr ../gridwars2-miyoo-flip.zip .)
+          ls -la gridwars2-miyoo-flip.zip
+
+      - name: Upload the finished port
+        uses: actions/upload-artifact@v4
+        with:
+          name: gridwars2-miyoo-flip
+          path: gridwars2-miyoo-flip.zip
+
+      - name: Upload build logs (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: logs/
+          if-no-files-found: ignore
