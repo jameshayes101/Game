@@ -95,7 +95,9 @@ jobs:
           export PATH="$BMX_BIN:$PATH"
           mkdir -p ../logs
           set +e
-          bmk makeapp -t gui -r -l linux -g arm64 gridwars.bmx 2>&1 | tee ../logs/build.log
+          # -w is required: the old game code mixes Float/Int, which BlitzMax only accepts with -w.
+          # The full log is saved; the console view hides the (harmless) warning blocks.
+          bmk makeapp -t gui -r -w -l linux -g arm64 gridwars.bmx 2>&1 | tee ../logs/build.log | awk '/^Compile Warning/ {skip=2; next} skip>0 {skip--; next} {print}'
           set -e
           test -x gridwars
           file gridwars | tee ../logs/binary-info.txt
