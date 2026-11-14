@@ -88,4 +88,25 @@ for name in ("utils.bmx", "control.bmx"):
     with open(p2, "w", encoding="latin-1", newline="") as f:
         f.write(t)
 
+# 4) Linking failed with "undefined reference to JoyCount / JoyCName / JoyButtonCaps / JoyAxisCaps / ReadJoy":
+#    BlitzMax's joystick back-end has no ARM64 Linux implementation. On the Flip all input arrives through
+#    gptokeyb (pad -> keyboard), so provide do-nothing versions that report "no joysticks connected".
+JOYSTUBS = """/* Miyoo Flip port: stand-ins for BlitzMax's joystick back-end, which has no ARM64 Linux version.
+   Input comes from gptokeyb (pad -> keyboard), so these simply report that no joysticks exist. */
+int JoyCount(void) { return 0; }
+const char *JoyCName(int port) { (void)port; return ""; }
+int JoyButtonCaps(int port) { (void)port; return 0; }
+int JoyAxisCaps(int port) { (void)port; return 0; }
+int ReadJoy() { return 0; }
+"""
+with open(os.path.join(src, "joystubs.c"), "w", newline="\n") as f:
+    f.write(JOYSTUBS)
+
+def add_import(s):
+    old = 'Import "control.bmx"\n'
+    new = 'Import "control.bmx"\n\n?Linux\nImport "joystubs.c"\n?\n'
+    return must_replace(s, old, new)
+edit("gridwars.bmx", add_import)
+print("Added joystick stubs")
+
 print("Patched OK")
